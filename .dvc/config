@@ -1,0 +1,7 @@
+[core]
+    remote = storage
+['remote "storage"']
+    url = https://dagshub.com/Ouma122456/crypto_mlops.dvc
+    auth = basic
+    user = oumaymaabassi
+    password = 9cc5c284956a782828b87bba7094d2d4103075be

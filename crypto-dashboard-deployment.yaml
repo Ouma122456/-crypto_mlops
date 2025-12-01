@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crypto-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crypto-dashboard
+  template:
+    metadata:
+      labels:
+        app: crypto-dashboard
+    spec:
+      containers:
+        - name: crypto-dashboard
+          image: crypto-mlops-front:latest   # use your local image
+          imagePullPolicy: Never              # do not try to pull from registry
+          ports:
+            - containerPort: 8501
+          env:
+            - name: API_URL
+              value: "http://crypto-api-service:8000/predict"  # points to K8s API service
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: crypto-dashboard-service
+spec:
+  selector:
+    app: crypto-dashboard
+  ports:
+    - protocol: TCP
+      port: 8501
+      targetPort: 8501
+      nodePort: 30001    # optional: for local access
+  type: NodePort        # or ClusterIP if accessed via Ingress only

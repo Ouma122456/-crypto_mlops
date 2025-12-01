@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crypto-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crypto-api
+  template:
+    metadata:
+      labels:
+        app: crypto-api
+    spec:
+      containers:
+        - name: crypto-api
+          image: crypto-api:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MODELS_DIR
+              value: "/models"
+            - name: PARQUET_PATH
+              value: "/data/processed/BTCUSDT_live.parquet"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "host.docker.internal:9092"
+          volumeMounts:
+            - name: model-volume
+              mountPath: /models
+            - name: data-volume
+              mountPath: /data/processed
+      volumes:
+        - name: model-volume
+          hostPath:
+            path: /run/desktop/mnt/host/d/crypto-mlops/models
+            type: Directory
+        - name: data-volume
+          hostPath:
+            path: /run/desktop/mnt/host/d/crypto-mlops/data/processed
+            type: Directory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: crypto-api-service
+spec:
+  selector:
+    app: crypto-api
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      nodePort: 30000   # Added NodePort for local access
+  type: NodePort       # Changed from ClusterIP to NodePort
