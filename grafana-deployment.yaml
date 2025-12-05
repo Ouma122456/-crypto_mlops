@@ -20,7 +20,7 @@ spec:
             - containerPort: 3000
           env:
             - name: GF_SECURITY_ADMIN_PASSWORD
-              value: "admin"
+              value: "admin"  # default admin password
 ---
 apiVersion: v1
 kind: Service

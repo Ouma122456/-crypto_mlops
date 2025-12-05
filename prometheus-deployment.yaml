@@ -14,17 +14,18 @@ data:
     global:
       scrape_interval: 15s
     scrape_configs:
-      - job_name: 'kubernetes-api'
+      # Scrape your crypto API metrics
+      - job_name: 'crypto-api'
         static_configs:
           - targets: ['crypto-api-service:8000']
         metrics_path: /metrics
+
+      # Scrape Kubernetes nodes
       - job_name: 'kubernetes-nodes'
         kubernetes_sd_configs:
           - role: node
-      - job_name: 'kubernetes-pods'
-        kubernetes_sd_configs:
-          - role: pod
 
+      
 ---
 apiVersion: apps/v1
 kind: Deployment
