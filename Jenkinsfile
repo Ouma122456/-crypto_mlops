@@ -1,23 +1,17 @@
 pipeline {
-    agent any
+    agent {
+        docker { image 'python:3.11-slim' }
+    }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
+        stage('Checkout') { steps { checkout scm } }
 
-        stage('Setup Python Virtualenv') {
+        stage('Setup Python Env') {
             steps {
                 sh '''
-                    # Create virtual environment in workspace
-                    python3 -m venv venv || python -m venv venv
-
-                    # Activate virtual environment
+                    python --version
+                    python -m venv venv
                     source venv/bin/activate
-
-                    # Upgrade pip and install dependencies
                     pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
@@ -46,7 +40,6 @@ pipeline {
             steps {
                 sh '''
                     source venv/bin/activate
-                    pip install --upgrade dvc
                     dvc pull || echo "No remote data"
                     dvc push || echo "Nothing to push"
                 '''
@@ -54,9 +47,5 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            echo "Pipeline finished"
-        }
-    }
+    post { always { echo "Pipeline finished" } }
 }
