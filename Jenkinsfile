@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PYTHON = "python"
-        VENV = "venv"
+        PYTHON = "C:\\Users\\abass\\AppData\\Local\\Programs\\Python\\Python311\\python.exe"
     }
 
     stages {
@@ -16,72 +15,45 @@ pipeline {
 
         stage('Setup Python Env') {
             steps {
-                bat '''
-                    echo --- Python version ---
-                    python --version
-
-                    echo --- Create virtual environment ---
-                    python -m venv %VENV%
-
-                    echo --- Activate venv & install dependencies ---
-                    call %VENV%\\Scripts\\activate
-                    pip install --upgrade pip
-
-                    if exist requirements.txt (
-                        pip install -r requirements.txt
-                    ) else (
-                        echo requirements.txt not found
-                    )
-                '''
+                bat """
+                    %PYTHON% --version
+                    pip install -r requirements.txt
+                """
             }
         }
 
         stage('Run Training Pipeline') {
             steps {
-                bat '''
-                    echo --- Running Training ---
-                    call %VENV%\\Scripts\\activate
-
-                    if exist train.py (
-                        python train.py
-                    ) else (
-                        echo train.py not found
-                    )
-                '''
+                bat """
+                    echo Running model training...
+                    %PYTHON% train.py
+                """
             }
         }
 
         stage('Run Evaluation') {
             steps {
-                bat '''
-                    echo --- Running Evaluation ---
-                    call %VENV%\\Scripts\\activate
-
-                    if exist evaluate.py (
-                        python evaluate.py
-                    ) else (
-                        echo No evaluation script found
-                    )
-                '''
+                bat """
+                    echo Running evaluation...
+                    %PYTHON% evaluate.py || echo No evaluation script found
+                """
             }
         }
 
-        stage('DVC Sync') {
+        stage('DVC Pull & Push') {
             steps {
-                bat '''
-                    echo --- DVC Sync ---
-                    call %VENV%\\Scripts\\activate
-
-                    dvc pull  || echo No remote data
-                    dvc push  || echo Nothing to push
-                '''
+                bat """
+                    echo Sync with DVC storage...
+                    dvc pull || echo No remote data
+                    dvc push || echo Nothing to push
+                """
             }
         }
     }
 
     post {
         always {
-            echo "Pipeline finished successfully 🚀"
+            echo "Pipeline finished"
         }
     }
 }
