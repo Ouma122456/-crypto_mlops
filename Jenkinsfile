@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        PYTHON = "/usr/bin/python3"
+        PYTHON = "python"
+        VENV = "venv"
     }
 
     stages {
@@ -15,37 +16,64 @@ pipeline {
 
         stage('Setup Python Env') {
             steps {
-                sh '''
-                    python3 --version
-                    pip3 install -r requirements.txt
+                bat '''
+                    echo --- Python version ---
+                    python --version
+
+                    echo --- Create virtual environment ---
+                    python -m venv %VENV%
+
+                    echo --- Activate venv & install dependencies ---
+                    call %VENV%\\Scripts\\activate
+                    pip install --upgrade pip
+
+                    if exist requirements.txt (
+                        pip install -r requirements.txt
+                    ) else (
+                        echo requirements.txt not found
+                    )
                 '''
             }
         }
 
         stage('Run Training Pipeline') {
             steps {
-                sh '''
-                    echo "Running model training..."
-                    python train.py
+                bat '''
+                    echo --- Running Training ---
+                    call %VENV%\\Scripts\\activate
+
+                    if exist train.py (
+                        python train.py
+                    ) else (
+                        echo train.py not found
+                    )
                 '''
             }
         }
 
         stage('Run Evaluation') {
             steps {
-                sh '''
-                    echo "Running evaluation..."
-                    python evaluate.py || echo "No evaluation script found"
+                bat '''
+                    echo --- Running Evaluation ---
+                    call %VENV%\\Scripts\\activate
+
+                    if exist evaluate.py (
+                        python evaluate.py
+                    ) else (
+                        echo No evaluation script found
+                    )
                 '''
             }
         }
 
-        stage('DVC Pull & Push') {
+        stage('DVC Sync') {
             steps {
-                sh '''
-                    echo "Sync with DVC storage..."
-                    dvc pull || echo "No remote data"
-                    dvc push || echo "Nothing to push"
+                bat '''
+                    echo --- DVC Sync ---
+                    call %VENV%\\Scripts\\activate
+
+                    dvc pull  || echo No remote data
+                    dvc push  || echo Nothing to push
                 '''
             }
         }
@@ -53,7 +81,7 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline finished"
+            echo "Pipeline finished successfully 🚀"
         }
     }
 }
