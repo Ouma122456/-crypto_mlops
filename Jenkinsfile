@@ -1,20 +1,16 @@
 pipeline {
-    agent any
-
-    environment {
-        PYTHON = "/usr/bin/python3"
+    agent {
+        docker { image 'python:3.11-slim' }
     }
 
     stages {
-        stage('Checkout') {
-            steps { checkout scm }
-        }
+        stage('Checkout') { steps { checkout scm } }
 
         stage('Setup Python Env') {
             steps {
                 sh '''
-                    python3 --version
-                    python3 -m venv venv
+                    python --version
+                    python -m venv venv
                     source venv/bin/activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
