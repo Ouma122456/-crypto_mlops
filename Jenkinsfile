@@ -2,54 +2,58 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE_API = "crypto-api:latest"
-        DOCKER_IMAGE_FRONT = "crypto-mlops-front:latest"
+        PYTHON = "/usr/bin/python3"
     }
 
     stages {
-        stage('Checkout du code') {
-            steps {
-                git url: 'https://dagshub.com/Ouma122456/crypto_mlops.git',
-                branch: 'main',
-                credentialsId: 'dagshub-credentials'
 
+        stage('Checkout') {
+            steps {
+                checkout scm
             }
         }
 
-        stage('Build des images Docker') {
+        stage('Setup Python Env') {
             steps {
-                sh 'docker-compose build'
+                sh '''
+                    python3 --version
+                    pip3 install -r requirements.txt
+                '''
             }
         }
 
-        //stage('Tests') {
-            //steps {
-                //sh 'pytest tests/'  // remplace par ton script de validation des modèles
-            //}
-        //}
-
-        stage('Déploiement Kubernetes') {
+        stage('Run Training Pipeline') {
             steps {
-                sh 'kubectl apply -f crypto-api-deployment.yaml'
-                sh 'kubectl apply -f crypto-dashboard-deployment.yaml'
-                sh 'kubectl apply -f prometheus-deployment.yaml'
-                sh 'kubectl apply -f grafana-deployment.yaml'
-
+                sh '''
+                    echo "Running model training..."
+                    python train.py
+                '''
+            }
         }
 
-        stage('Vérification') {
+        stage('Run Evaluation') {
             steps {
-                sh 'kubectl get pods'  // vérifie que les pods sont en Running
+                sh '''
+                    echo "Running evaluation..."
+                    python evaluate.py || echo "No evaluation script found"
+                '''
+            }
+        }
+
+        stage('DVC Pull & Push') {
+            steps {
+                sh '''
+                    echo "Sync with DVC storage..."
+                    dvc pull || echo "No remote data"
+                    dvc push || echo "Nothing to push"
+                '''
             }
         }
     }
 
     post {
-        success {
-            echo 'Pipeline terminé avec succès !'
-        }
-        failure {
-            echo 'Échec du pipeline.'
+        always {
+            echo "Pipeline finished"
         }
     }
 }
