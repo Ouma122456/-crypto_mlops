@@ -2,58 +2,56 @@ pipeline {
     agent any
 
     environment {
-        PYTHON = "C:\\Users\\abass\\AppData\\Local\\Programs\\Python\\Python311\\python.exe"
+        PYTHON = "/usr/bin/python3"
     }
 
     stages {
-
         stage('Checkout') {
-            steps {
-                checkout scm
-            }
+            steps { checkout scm }
         }
 
         stage('Setup Python Env') {
             steps {
-                bat """
-                    %PYTHON% --version
+                sh '''
+                    python3 --version
+                    python3 -m venv venv
+                    source venv/bin/activate
+                    pip install --upgrade pip
                     pip install -r requirements.txt
-                """
+                '''
             }
         }
 
         stage('Run Training Pipeline') {
             steps {
-                bat """
-                    echo Running model training...
-                    %PYTHON% train.py
-                """
+                sh '''
+                    source venv/bin/activate
+                    python train.py
+                '''
             }
         }
 
         stage('Run Evaluation') {
             steps {
-                bat """
-                    echo Running evaluation...
-                    %PYTHON% evaluate.py || echo No evaluation script found
-                """
+                sh '''
+                    source venv/bin/activate
+                    python evaluate.py || echo "No evaluation script found"
+                '''
             }
         }
 
         stage('DVC Pull & Push') {
             steps {
-                bat """
-                    echo Sync with DVC storage...
-                    dvc pull || echo No remote data
-                    dvc push || echo Nothing to push
-                """
+                sh '''
+                    source venv/bin/activate
+                    dvc pull || echo "No remote data"
+                    dvc push || echo "Nothing to push"
+                '''
             }
         }
     }
 
     post {
-        always {
-            echo "Pipeline finished"
-        }
+        always { echo "Pipeline finished" }
     }
 }
