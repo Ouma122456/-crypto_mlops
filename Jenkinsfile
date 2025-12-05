@@ -1,19 +1,31 @@
 pipeline {
-    agent {
-        docker { image 'python:3.11-slim' }
-    }
+    agent any
 
     stages {
-        stage('Checkout') { steps { checkout scm } }
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
 
-        stage('Setup Python Env') {
+        stage('Setup Python') {
             steps {
                 sh '''
-                    python --version
-                    python -m venv venv
-                    source venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
+                    #!/bin/bash
+
+                    # Check if python3 exists
+                    if ! command -v python3 &> /dev/null
+                    then
+                        echo "Python3 not found. Installing..."
+                        sudo apt-get update
+                        sudo apt-get install -y python3 python3-pip
+                    else
+                        echo "Python3 found"
+                    fi
+
+                    python3 --version
+                    pip3 install --upgrade pip
+                    pip3 install -r requirements.txt
                 '''
             }
         }
@@ -21,8 +33,8 @@ pipeline {
         stage('Run Training Pipeline') {
             steps {
                 sh '''
-                    source venv/bin/activate
-                    python train.py
+                    echo "Running model training..."
+                    python3 train.py
                 '''
             }
         }
@@ -30,8 +42,8 @@ pipeline {
         stage('Run Evaluation') {
             steps {
                 sh '''
-                    source venv/bin/activate
-                    python evaluate.py || echo "No evaluation script found"
+                    echo "Running evaluation..."
+                    python3 evaluate.py || echo "No evaluation script found"
                 '''
             }
         }
@@ -39,7 +51,8 @@ pipeline {
         stage('DVC Pull & Push') {
             steps {
                 sh '''
-                    source venv/bin/activate
+                    echo "Sync with DVC storage..."
+                    pip3 install --upgrade dvc
                     dvc pull || echo "No remote data"
                     dvc push || echo "Nothing to push"
                 '''
@@ -48,6 +61,8 @@ pipeline {
     }
 
     post {
-        always { echo "Pipeline finished" }
+        always {
+            echo "Pipeline finished"
+        }
     }
 }
