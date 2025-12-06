@@ -1,16 +1,12 @@
 pipeline {
-    agent {
-        docker { image 'python:3.11-slim' }
-    }
+    agent any
 
     stages {
-        stage('Checkout') { steps { checkout scm } }
-
         stage('Setup Python Env') {
             steps {
                 sh '''
-                    python --version
-                    python -m venv venv
+                    python3 --version
+                    python3 -m venv venv
                     source venv/bin/activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
@@ -47,5 +43,7 @@ pipeline {
         }
     }
 
-    post { always { echo "Pipeline finished" } }
+    post {
+        always { echo "Pipeline finished" }
+    }
 }
