@@ -4,13 +4,24 @@ pipeline {
     }
 
     stages {
+
+        stage('Install System Dependencies') {
+            steps {
+                sh '''
+                    apt-get update
+                    apt-get install -y git gcc build-essential curl
+                    pip install --upgrade pip
+                    pip install dvc dvc[s3]  # adapte selon ton remote
+                '''
+            }
+        }
+
         stage('Setup Python Env') {
             steps {
                 sh '''
                     python3 --version
                     python3 -m venv venv
-                    source venv/bin/activate
-                    pip install --upgrade pip
+                    . venv/bin/activate
                     pip install -r requirements.txt
                 '''
             }
@@ -19,7 +30,7 @@ pipeline {
         stage('Run Training Pipeline') {
             steps {
                 sh '''
-                    source venv/bin/activate
+                    . venv/bin/activate
                     python train.py
                 '''
             }
@@ -28,7 +39,7 @@ pipeline {
         stage('Run Evaluation') {
             steps {
                 sh '''
-                    source venv/bin/activate
+                    . venv/bin/activate
                     python evaluate.py || echo "No evaluation script found"
                 '''
             }
@@ -37,7 +48,7 @@ pipeline {
         stage('DVC Pull & Push') {
             steps {
                 sh '''
-                    source venv/bin/activate
+                    . venv/bin/activate
                     dvc pull || echo "No remote data"
                     dvc push || echo "Nothing to push"
                 '''
