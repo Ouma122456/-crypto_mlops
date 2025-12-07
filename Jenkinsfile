@@ -23,7 +23,7 @@ pipeline {
             steps {
                 sh '''
                     . venv_local/bin/activate
-                    python train.py
+                    python src/models/train1.py
                 '''
             }
         }
