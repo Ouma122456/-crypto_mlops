@@ -1,9 +1,5 @@
 pipeline {
-    agent any  // Utilise le conteneur Jenkins lui-même
-
-    environment {
-        PATH = "/opt/venv/bin:$PATH"  // Utilise le venv global de ton Dockerfile
-    }
+    agent any
 
     stages {
 
@@ -11,8 +7,10 @@ pipeline {
             steps {
                 sh '''
                     python3 --version
+                    python3 -m venv venv_local
+                    . venv_local/bin/activate
                     pip install --upgrade pip
-                    pip install -r requirements.txt || echo "Dependencies already installed"
+                    pip install -r requirements.txt
                 '''
             }
         }
@@ -20,6 +18,7 @@ pipeline {
         stage('Run Training Pipeline') {
             steps {
                 sh '''
+                    . venv_local/bin/activate
                     python src/models/train1.py
                 '''
             }
@@ -28,6 +27,7 @@ pipeline {
         stage('Run Evaluation') {
             steps {
                 sh '''
+                    . venv_local/bin/activate
                     python evaluate.py || echo "No evaluation script found"
                 '''
             }
@@ -36,6 +36,7 @@ pipeline {
         stage('DVC Pull & Push') {
             steps {
                 sh '''
+                    . venv_local/bin/activate
                     dvc pull || echo "No remote data"
                     dvc push || echo "Nothing to push"
                 '''
