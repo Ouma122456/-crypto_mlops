@@ -8,73 +8,85 @@ import uvicorn
 from prometheus_client import Counter, Histogram, make_asgi_app
 import random
 
-app = FastAPI(title="Crypto Live Prediction API", version="1.0")
+app = FastAPI(title="Crypto Live Prediction API", version="1.1")
 
 # ----------------------------
 # Prometheus metrics
 # ----------------------------
-REQUEST_COUNT = Counter("api_requests_total", "Total API Requests", ["endpoint"])
-REQUEST_LATENCY = Histogram("api_request_latency_seconds", "Request latency in seconds", ["endpoint"])
+
+# Total requests per endpoint + status code
+REQUEST_COUNT = Counter(
+    "api_requests_total",
+    "Total API Requests",
+    ["endpoint", "status"]
+)
+
+# Latency tracking per endpoint
+REQUEST_LATENCY = Histogram(
+    "api_request_latency_seconds",
+    "Request latency in seconds",
+    ["endpoint"],
+    buckets=[0.01, 0.05, 0.1, 0.5, 1, 2]
+)
+
+# Prediction metrics
+PRED_UP = Counter("crypto_predictions_up_total", "Total UP predictions")
+PRED_DOWN = Counter("crypto_predictions_down_total", "Total DOWN predictions")
 
 @app.middleware("http")
 async def metrics_middleware(request: Request, call_next):
-    import time
     start_time = time.time()
     response = await call_next(request)
+
     duration = time.time() - start_time
-    REQUEST_COUNT.labels(endpoint=request.url.path).inc()
+    status = response.status_code
+
+    # Increment request counter
+    REQUEST_COUNT.labels(endpoint=request.url.path, status=status).inc()
+    
+    # Record latency
     REQUEST_LATENCY.labels(endpoint=request.url.path).observe(duration)
+
     return response
 
 # ----------------------------
 # Simulated model
 # ----------------------------
+
 def predict_latest():
-    """
-    Simulate a dynamic prediction.
-    Replace this with your actual model inference later.
-    """
-    price = 87000 + random.uniform(-500, 500)  # dynamic price
+    price = 87000 + random.uniform(-500, 500)
     probability = random.uniform(0.3, 0.9)
     label = "UP" if probability > 0.5 else "DOWN"
+
+    # Update prediction counters
+    if label == "UP":
+        PRED_UP.inc()
+    else:
+        PRED_DOWN.inc()
 
     return {
         "price": round(price, 2),
         "prediction": 1 if label == "UP" else 0,
         "prediction_label": label,
         "probability": round(probability, 2),
-        "timestamp": int(time.time())  # UNIX timestamp in seconds
+        "timestamp": int(time.time())
     }
 
-# ----------------------------
-# Health endpoint
-# ----------------------------
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
-# ----------------------------
 # Single prediction
-# ----------------------------
 @app.get("/predict")
 async def predict():
-    """
-    Return a single, immediate prediction (latest candle)
-    """
     try:
         result = predict_latest()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return JSONResponse(result)
 
-# ----------------------------
 # Streaming predictions (SSE)
-# ----------------------------
 async def event_generator(interval_seconds: float = 1.0):
-    """
-    Async generator for Server-Sent Events.
-    Yields a JSON line every `interval_seconds`.
-    """
     while True:
         try:
             result = predict_latest()
@@ -85,10 +97,6 @@ async def event_generator(interval_seconds: float = 1.0):
 
 @app.get("/stream")
 async def stream(interval: float = 1.0):
-    """
-    Stream live predictions as Server-Sent Events (SSE).
-    Example: /stream?interval=1.0
-    """
     return StreamingResponse(event_generator(interval), media_type="text/event-stream")
 
 # ----------------------------
@@ -98,12 +106,12 @@ metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
 # ----------------------------
-# Run the app
+# Run
 # ----------------------------
 if __name__ == "__main__":
     uvicorn.run(
         "src.api.app:app",
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 8000, )),
+        port=int(os.environ.get("PORT", 8000)),
         reload=True
     )

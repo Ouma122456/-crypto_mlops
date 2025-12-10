@@ -1,9 +1,16 @@
+# ----------------------------
+# Namespace for monitoring
+# ----------------------------
 apiVersion: v1
 kind: Namespace
 metadata:
   name: monitoring
 
 ---
+
+# ----------------------------
+# Prometheus ConfigMap
+# ----------------------------
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -14,19 +21,22 @@ data:
     global:
       scrape_interval: 15s
     scrape_configs:
-      # Scrape your crypto API metrics
+      # Scrape the crypto API metrics
       - job_name: 'crypto-api'
         static_configs:
-          - targets: ['crypto-api-service:8000']
+          - targets: ['crypto-api-service.default.svc.cluster.local:8000']
         metrics_path: /metrics
 
-      # Scrape Kubernetes nodes
+      # Scrape Kubernetes nodes metrics
       - job_name: 'kubernetes-nodes'
         kubernetes_sd_configs:
           - role: node
 
-      
 ---
+
+# ----------------------------
+# Prometheus Deployment
+# ----------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -58,6 +68,10 @@ spec:
             name: prometheus-config
 
 ---
+
+# ----------------------------
+# Prometheus Service
+# ----------------------------
 apiVersion: v1
 kind: Service
 metadata:
