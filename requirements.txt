@@ -6,6 +6,7 @@ joblib
 scikit-learn
 python-dotenv
 xgboost
-pyarrow 
+pyarrow
 lightgbm
 catboost
+mlflow
