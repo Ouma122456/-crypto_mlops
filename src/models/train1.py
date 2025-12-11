@@ -140,6 +140,20 @@ stacker = StackingClassifier(estimators, final_estimator=LogisticRegression(), n
 stacker.fit(X_train, y_train)
 voter = VotingClassifier(estimators, voting="soft", n_jobs=-1)
 voter.fit(X_train, y_train)
+# Evaluate ensembles
+stack_pred = stacker.predict(X_test)
+stack_metrics = calculate_metrics(y_test, stack_pred, returns_test)
+log_model_mlflow(stacker, "Stacking", "ensemble", stack_metrics, duration=0)
+print(f"Stacking: DA={stack_metrics['DA']:.4f}, PnL={stack_metrics['PnL']:.2f}")
 
+vote_pred = voter.predict(X_test)
+vote_metrics = calculate_metrics(y_test, vote_pred, returns_test)
+log_model_mlflow(voter, "Voting", "ensemble", vote_metrics, duration=0)
+print(f"Voting: DA={vote_metrics['DA']:.4f}, PnL={vote_metrics['PnL']:.2f}")
+
+
+
+
+# Save final ensemble
 joblib.dump(voter, os.path.join(MODELS_DIR, "final_model.pkl"))
 print("✅ Final ensemble model saved to models/final_model.pkl")
