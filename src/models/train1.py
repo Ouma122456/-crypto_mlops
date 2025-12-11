@@ -83,15 +83,17 @@ def calculate_metrics(y_true, y_pred, df_returns):
     return {"DA": DA, "Precision_Up": precision_up, "Precision_Down": precision_down, "PnL": pnl}
 
 def log_model_mlflow(model, name, stage, metrics, duration, params=None):
+    """Log metrics and params to MLflow and save the model locally instead of logging it as artifact."""
     with mlflow.start_run(run_name=f"{name}_{stage}"):
         mlflow.log_params(params or {})
         mlflow.log_metrics(metrics)
         mlflow.log_metric("duration_s", duration)
-        try:
-            signature = infer_signature(X_test, model.predict(X_test))
-        except:
-            signature = None
-        mlflow.sklearn.log_model(model, artifact_path=name, input_example=X_test.iloc[:1], signature=signature)
+    
+    # Save the model locally
+    model_filename = os.path.join(MODELS_DIR, f"{name}_{stage}.pkl")
+    joblib.dump(model, model_filename)
+    print(f"✅ {name} saved locally as {model_filename}")
+
 
 # -------------------------- Train baseline models --------------------------
 baseline_models = {
