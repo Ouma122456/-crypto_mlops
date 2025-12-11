@@ -19,6 +19,7 @@ pipeline {
             steps {
                 sh '''
                     . venv_local/bin/activate
+                    export PYTHONPATH=$PYTHONPATH:$WORKSPACE
                     python src/models/train1.py
                 '''
             }
