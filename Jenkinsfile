@@ -19,7 +19,7 @@ pipeline {
             steps {
                 sh '''
                     . venv_local/bin/activate
-                    export PYTHONPATH=$PYTHONPATH:$WORKSPACE
+                    export PYTHONPATH=$PYTHONPATH:$WORKSPACE/src
                     python src/models/train1.py
                 '''
             }
@@ -30,6 +30,16 @@ pipeline {
                 sh '''
                     . venv_local/bin/activate
                     python evaluate.py || echo "No evaluation script found"
+                '''
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh '''
+                    . venv_local/bin/activate
+                    export PYTHONPATH=$PYTHONPATH:$WORKSPACE/src
+                    pytest -v tests/test_app.py
                 '''
             }
         }
@@ -47,5 +57,7 @@ pipeline {
 
     post {
         always { echo "Pipeline finished" }
+        success { echo "Pipeline succeeded" }
+        failure { echo "Pipeline failed" }
     }
 }

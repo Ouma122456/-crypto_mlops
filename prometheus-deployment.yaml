@@ -24,7 +24,7 @@ data:
       # Scrape the crypto API metrics
       - job_name: 'crypto-api'
         static_configs:
-          - targets: ['crypto-api-service.default.svc.cluster.local:8000']
+          - targets: ['host.docker.internal:8000']
         metrics_path: /metrics
 
       # Scrape Kubernetes nodes metrics

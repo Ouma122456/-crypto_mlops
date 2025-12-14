@@ -29,8 +29,15 @@ REQUEST_LATENCY = Histogram(
 PRED_UP = Counter("crypto_predictions_up_total", "Total UP predictions")
 PRED_DOWN = Counter("crypto_predictions_down_total", "Total DOWN predictions")
 
+# ----------------------------
+# Middleware for metrics
+# ----------------------------
 @app.middleware("http")
 async def metrics_middleware(request: Request, call_next):
+    # Skip Prometheus metrics endpoint itself
+    if request.url.path.startswith("/metrics"):
+        return await call_next(request)
+
     start_time = time.time()
     response = await call_next(request)
     duration = time.time() - start_time
@@ -96,6 +103,16 @@ async def stream(interval: float = 1.0, max_events: int = Query(None, ge=1)):
 # ----------------------------
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
+
+# ----------------------------
+# Optional: Background task to simulate continuous metrics (for demo)
+# ----------------------------
+@app.on_event("startup")
+async def generate_metrics_periodically():
+    # Optional: comment out if you only want metrics on real requests
+    while True:
+        predict_latest()  # increments PRED_UP/PRED_DOWN continuously
+        await asyncio.sleep(1)
 
 # ----------------------------
 # Run

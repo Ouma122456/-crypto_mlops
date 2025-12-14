@@ -121,10 +121,10 @@ param_space = {
     "RandomForest": {"n_estimators": randint(100, 300), "max_depth": randint(10, 25)},
     "XGBoost": {"n_estimators": randint(100, 300), "max_depth": randint(3, 8), "learning_rate": uniform(0.01, 0.2)},
     "LightGBM": {"n_estimators": randint(80, 150), "max_depth": randint(3, 6), "learning_rate": uniform(0.02, 0.1)},
-    "CatBoost": {"iterations": randint(100, 200), "depth": randint(4, 7), "learning_rate": uniform(0.01, 0.1)}
+    # CatBoost tuning removed due to sklearn RandomizedSearchCV incompatibility
 }
 
-for name in baseline_models.keys():
+for name in ["RandomForest", "XGBoost", "LightGBM"]:
     print(f"Tuning {name}...")
     search = RandomizedSearchCV(
         baseline_models[name],
@@ -143,6 +143,9 @@ for name in baseline_models.keys():
     duration = (datetime.now() - start).total_seconds()
     log_model_mlflow(best_model, name, "tuned", metrics, duration, search.best_params_)
     print(f"{name}_tuned: DA={metrics['DA']:.4f}, PnL={metrics['PnL']:.2f}")
+
+# Use baseline CatBoost for ensemble
+trained_models["CatBoost_tuned"] = trained_models["CatBoost"]
 
 # -------------------------- Ensembles --------------------------
 estimators = [
