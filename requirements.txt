@@ -10,3 +10,4 @@ pyarrow
 lightgbm
 catboost
 mlflow
+pytest
