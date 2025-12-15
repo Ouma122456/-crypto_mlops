@@ -13,4 +13,4 @@ mlflow
 pytest
 httpx>=0.26.0
 pytest>=9.0.0
-
+prometheus_client>=0.16.0
