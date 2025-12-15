@@ -145,12 +145,14 @@ for name in baseline_models.keys():
     print(f"{name}_tuned: DA={metrics['DA']:.4f}, PnL={metrics['PnL']:.2f}")
 
 # -------------------------- Ensembles --------------------------
+# Remove CatBoost from stacking because it is not fully compatible
 estimators = [
     ("rf", trained_models["RandomForest_tuned"]),
     ("xgb", trained_models["XGBoost_tuned"]),
     ("lgb", trained_models["LightGBM_tuned"])
 ]
 
+# Stacking without CatBoost
 stacker = StackingClassifier(
     estimators=estimators,
     final_estimator=LogisticRegression(),
@@ -158,13 +160,15 @@ stacker = StackingClassifier(
 )
 stacker.fit(X_train, y_train)
 
+# Voting ensemble can still include CatBoost
+voter_estimators = estimators + [("cat", trained_models["CatBoost_tuned"])]
+
 voter = VotingClassifier(
-    estimators=estimators,
+    estimators=voter_estimators,
     voting="soft",
     n_jobs=-1
 )
 voter.fit(X_train, y_train)
-
 
 # Evaluate ensembles
 stack_pred = stacker.predict(X_test)
@@ -177,6 +181,6 @@ vote_metrics = calculate_metrics(y_test, vote_pred, returns_test)
 log_model_mlflow(voter, "Voting", "ensemble", vote_metrics, duration=0)
 print(f"Voting: DA={vote_metrics['DA']:.4f}, PnL={vote_metrics['PnL']:.2f}")
 
-# -------------------------- Final model save --------------------------
+# Save final model
 joblib.dump(voter, os.path.join(MODELS_DIR, "final_model.pkl"))
 print("Final ensemble model saved to models/final_model.pkl")
