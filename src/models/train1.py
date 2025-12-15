@@ -30,24 +30,14 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 # -------------------------- MLflow setup --------------------------
 def setup_mlflow():
     if DAGSHUB_USERNAME and DAGSHUB_REPO:
-        remote_uri = f"https://dagshub.com/{DAGSHUB_USERNAME}/{DAGSHUB_REPO}.mlflow"
+        uri = f"https://dagshub.com/{DAGSHUB_USERNAME}/{DAGSHUB_REPO}.mlflow"
         os.environ["MLFLOW_TRACKING_USERNAME"] = DAGSHUB_USERNAME
         os.environ["MLFLOW_TRACKING_PASSWORD"] = DAGSHUB_TOKEN
-        mlflow.set_tracking_uri(remote_uri)
-        try:
-            mlflow.set_experiment(EXPERIMENT_NAME)
-        except:
-            mlflow.create_experiment(EXPERIMENT_NAME)
-            mlflow.set_experiment(EXPERIMENT_NAME)
-        print("Connected to DagsHub MLflow")
+        mlflow.set_tracking_uri(uri)
+        mlflow.set_experiment(EXPERIMENT_NAME)
     else:
-        local_uri = os.path.abspath("mlruns").replace("\\", "/")
-        mlflow.set_tracking_uri(f"file:///{local_uri}")
-        try:
-            mlflow.set_experiment(EXPERIMENT_NAME)
-        except:
-            mlflow.create_experiment(EXPERIMENT_NAME)
-        print("Using local MLflow tracking")
+        mlflow.set_tracking_uri("file:///mlruns")
+        mlflow.set_experiment(EXPERIMENT_NAME)
 
 setup_mlflow()
 
@@ -66,24 +56,18 @@ X = df[features].astype(float)
 y = df["target"]
 returns = df["OC_pct_change"] / 100
 
-split_idx = int(0.8 * len(df))
-X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
-y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
-returns_test = returns.iloc[split_idx:]
+split = int(0.8 * len(df))
+X_train, X_test = X.iloc[:split], X.iloc[split:]
+y_train, y_test = y.iloc[:split], y.iloc[split:]
+returns_test = returns.iloc[split:]
 
-print(f"Data split: {len(X_train)} train / {len(X_test)} test")
-
-# -------------------------- Helper functions --------------------------
-def calculate_metrics(y_true, y_pred, df_returns):
-    DA = np.mean(y_true == y_pred)
-    precision_up = precision_score(y_true, y_pred, pos_label=1)
-    precision_down = precision_score(y_true, y_pred, pos_label=0)
-    pnl = np.sum(df_returns.shift(-1).fillna(0) * (2 * y_pred - 1))
+# -------------------------- Helpers --------------------------
+def calculate_metrics(y_true, y_pred, returns):
     return {
-        "DA": DA,
-        "Precision_Up": precision_up,
-        "Precision_Down": precision_down,
-        "PnL": pnl
+        "DA": np.mean(y_true == y_pred),
+        "Precision_Up": precision_score(y_true, y_pred, pos_label=1),
+        "Precision_Down": precision_score(y_true, y_pred, pos_label=0),
+        "PnL": np.sum(returns.shift(-1).fillna(0) * (2 * y_pred - 1))
     }
 
 def log_model_mlflow(model, name, stage, metrics, duration, params=None):
@@ -91,10 +75,16 @@ def log_model_mlflow(model, name, stage, metrics, duration, params=None):
         mlflow.log_params(params or {})
         mlflow.log_metrics(metrics)
         mlflow.log_metric("duration_s", duration)
+    joblib.dump(model, f"{MODELS_DIR}/{name}_{stage}.pkl")
 
-    model_path = os.path.join(MODELS_DIR, f"{name}_{stage}.pkl")
-    joblib.dump(model, model_path)
-    print(f"{name} saved locally as {model_path}")
+def print_results(name, stage, metrics):
+    print(
+        f"{name} ({stage}) | "
+        f"DA={metrics['DA']:.4f} | "
+        f"PnL={metrics['PnL']:.2f} | "
+        f"Precision_Up={metrics['Precision_Up']:.4f} | "
+        f"Precision_Down={metrics['Precision_Down']:.4f}"
+    )
 
 # -------------------------- Baseline models --------------------------
 baseline_models = {
@@ -104,8 +94,8 @@ baseline_models = {
     "CatBoost": CatBoostClassifier(iterations=100, random_state=42, verbose=0)
 }
 
-trained_models = {}
-print("\nTraining baseline models...")
+trained = {}
+
 for name, model in baseline_models.items():
     start = datetime.now()
     model.fit(X_train, y_train)
@@ -113,8 +103,8 @@ for name, model in baseline_models.items():
     metrics = calculate_metrics(y_test, pred, returns_test)
     duration = (datetime.now() - start).total_seconds()
     log_model_mlflow(model, name, "baseline", metrics, duration)
-    trained_models[name] = model
-    print(f"{name}: DA={metrics['DA']:.4f}, PnL={metrics['PnL']:.2f}")
+    print_results(name, "baseline", metrics)
+    trained[name] = model
 
 # -------------------------- Hyperparameter tuning --------------------------
 param_space = {
@@ -123,71 +113,57 @@ param_space = {
     "LightGBM": {"n_estimators": randint(80, 150), "max_depth": randint(3, 6), "learning_rate": uniform(0.02, 0.1)}
 }
 
-# Tune all except CatBoost using RandomizedSearchCV
 for name in ["RandomForest", "XGBoost", "LightGBM"]:
-    print(f"Tuning {name}...")
     search = RandomizedSearchCV(
-        baseline_models[name],
-        param_space[name],
-        n_iter=5,
-        cv=3,
-        n_jobs=-1,
-        random_state=42
+        baseline_models[name], param_space[name], n_iter=5, cv=3, n_jobs=-1
     )
     start = datetime.now()
     search.fit(X_train, y_train)
-    best_model = search.best_estimator_
-    trained_models[name + "_tuned"] = best_model
-    pred = best_model.predict(X_test)
+    best = search.best_estimator_
+    pred = best.predict(X_test)
     metrics = calculate_metrics(y_test, pred, returns_test)
     duration = (datetime.now() - start).total_seconds()
-    log_model_mlflow(best_model, name, "tuned", metrics, duration, search.best_params_)
-    print(f"{name}_tuned: DA={metrics['DA']:.4f}, PnL={metrics['PnL']:.2f}")
+    log_model_mlflow(best, name, "tuned", metrics, duration, search.best_params_)
+    print_results(name, "tuned", metrics)
+    trained[f"{name}_tuned"] = best
 
-# Manually train CatBoost (to avoid __sklearn_tags__ error)
-print("Tuning CatBoost manually...")
+# -------------------------- CatBoost tuned --------------------------
 start = datetime.now()
 cat = CatBoostClassifier(iterations=150, depth=6, learning_rate=0.05, verbose=0, random_state=42)
 cat.fit(X_train, y_train)
-trained_models["CatBoost_tuned"] = cat
 pred = cat.predict(X_test)
 metrics = calculate_metrics(y_test, pred, returns_test)
 duration = (datetime.now() - start).total_seconds()
 log_model_mlflow(cat, "CatBoost", "tuned", metrics, duration)
-print(f"CatBoost_tuned: DA={metrics['DA']:.4f}, PnL={metrics['PnL']:.2f}")
+print_results("CatBoost", "tuned", metrics)
+trained["CatBoost_tuned"] = cat
 
 # -------------------------- Ensembles --------------------------
 estimators = [
-    ("rf", trained_models["RandomForest_tuned"]),
-    ("xgb", trained_models["XGBoost_tuned"]),
-    ("lgb", trained_models["LightGBM_tuned"])
+    ("rf", trained["RandomForest_tuned"]),
+    ("xgb", trained["XGBoost_tuned"]),
+    ("lgb", trained["LightGBM_tuned"])
 ]
 
-# Stacking without CatBoost
-stacker = StackingClassifier(
-    estimators=estimators,
-    final_estimator=LogisticRegression(),
-    n_jobs=-1
-)
+# Stacking
+stacker = StackingClassifier(estimators=estimators, final_estimator=LogisticRegression(), n_jobs=-1)
 stacker.fit(X_train, y_train)
-stack_pred = stacker.predict(X_test)
-stack_metrics = calculate_metrics(y_test, stack_pred, returns_test)
-log_model_mlflow(stacker, "Stacking", "ensemble", stack_metrics, duration=0)
-print(f"Stacking: DA={stack_metrics['DA']:.4f}, PnL={stack_metrics['PnL']:.2f}")
+pred = stacker.predict(X_test)
+metrics = calculate_metrics(y_test, pred, returns_test)
+log_model_mlflow(stacker, "Stacking", "ensemble", metrics, 0)
+print_results("Stacking", "ensemble", metrics)
 
-# Voting ensemble including CatBoost
-voter_estimators = estimators + [("cat", trained_models["CatBoost_tuned"])]
+# Voting
 voter = VotingClassifier(
-    estimators=voter_estimators,
+    estimators=estimators + [("cat", trained["CatBoost_tuned"])],
     voting="soft",
     n_jobs=-1
 )
 voter.fit(X_train, y_train)
-vote_pred = voter.predict(X_test)
-vote_metrics = calculate_metrics(y_test, vote_pred, returns_test)
-log_model_mlflow(voter, "Voting", "ensemble", vote_metrics, duration=0)
-print(f"Voting: DA={vote_metrics['DA']:.4f}, PnL={vote_metrics['PnL']:.2f}")
+pred = voter.predict(X_test)
+metrics = calculate_metrics(y_test, pred, returns_test)
+log_model_mlflow(voter, "Voting", "ensemble", metrics, 0)
+print_results("Voting", "ensemble", metrics)
 
-# Save final model
-joblib.dump(voter, os.path.join(MODELS_DIR, "final_model.pkl"))
-print("Final ensemble model saved to models/final_model.pkl")
+joblib.dump(voter, f"{MODELS_DIR}/final_model.pkl")
+print("Final ensemble model saved")
