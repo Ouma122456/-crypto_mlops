@@ -120,11 +120,11 @@ for name, model in baseline_models.items():
 param_space = {
     "RandomForest": {"n_estimators": randint(100, 300), "max_depth": randint(10, 25)},
     "XGBoost": {"n_estimators": randint(100, 300), "max_depth": randint(3, 8), "learning_rate": uniform(0.01, 0.2)},
-    "LightGBM": {"n_estimators": randint(80, 150), "max_depth": randint(3, 6), "learning_rate": uniform(0.02, 0.1)},
-    "CatBoost": {"iterations": randint(100, 200), "depth": randint(4, 7), "learning_rate": uniform(0.01, 0.1)}
+    "LightGBM": {"n_estimators": randint(80, 150), "max_depth": randint(3, 6), "learning_rate": uniform(0.02, 0.1)}
 }
 
-for name in baseline_models.keys():
+# Tune all except CatBoost using RandomizedSearchCV
+for name in ["RandomForest", "XGBoost", "LightGBM"]:
     print(f"Tuning {name}...")
     search = RandomizedSearchCV(
         baseline_models[name],
@@ -144,8 +144,19 @@ for name in baseline_models.keys():
     log_model_mlflow(best_model, name, "tuned", metrics, duration, search.best_params_)
     print(f"{name}_tuned: DA={metrics['DA']:.4f}, PnL={metrics['PnL']:.2f}")
 
+# Manually train CatBoost (to avoid __sklearn_tags__ error)
+print("Tuning CatBoost manually...")
+start = datetime.now()
+cat = CatBoostClassifier(iterations=150, depth=6, learning_rate=0.05, verbose=0, random_state=42)
+cat.fit(X_train, y_train)
+trained_models["CatBoost_tuned"] = cat
+pred = cat.predict(X_test)
+metrics = calculate_metrics(y_test, pred, returns_test)
+duration = (datetime.now() - start).total_seconds()
+log_model_mlflow(cat, "CatBoost", "tuned", metrics, duration)
+print(f"CatBoost_tuned: DA={metrics['DA']:.4f}, PnL={metrics['PnL']:.2f}")
+
 # -------------------------- Ensembles --------------------------
-# Remove CatBoost from stacking because it is not fully compatible
 estimators = [
     ("rf", trained_models["RandomForest_tuned"]),
     ("xgb", trained_models["XGBoost_tuned"]),
@@ -159,23 +170,19 @@ stacker = StackingClassifier(
     n_jobs=-1
 )
 stacker.fit(X_train, y_train)
+stack_pred = stacker.predict(X_test)
+stack_metrics = calculate_metrics(y_test, stack_pred, returns_test)
+log_model_mlflow(stacker, "Stacking", "ensemble", stack_metrics, duration=0)
+print(f"Stacking: DA={stack_metrics['DA']:.4f}, PnL={stack_metrics['PnL']:.2f}")
 
-# Voting ensemble can still include CatBoost
+# Voting ensemble including CatBoost
 voter_estimators = estimators + [("cat", trained_models["CatBoost_tuned"])]
-
 voter = VotingClassifier(
     estimators=voter_estimators,
     voting="soft",
     n_jobs=-1
 )
 voter.fit(X_train, y_train)
-
-# Evaluate ensembles
-stack_pred = stacker.predict(X_test)
-stack_metrics = calculate_metrics(y_test, stack_pred, returns_test)
-log_model_mlflow(stacker, "Stacking", "ensemble", stack_metrics, duration=0)
-print(f"Stacking: DA={stack_metrics['DA']:.4f}, PnL={stack_metrics['PnL']:.2f}")
-
 vote_pred = voter.predict(X_test)
 vote_metrics = calculate_metrics(y_test, vote_pred, returns_test)
 log_model_mlflow(voter, "Voting", "ensemble", vote_metrics, duration=0)
