@@ -3,6 +3,13 @@ pipeline {
 
     stages {
 
+        stage('Checkout') {
+            steps {
+                deleteDir() 
+                git branch: 'main', url: 'https://dagshub.com/Ouma122456/crypto_mlops'
+            }
+        }
+
         stage('Setup Python Env') {
             steps {
                 sh '''
