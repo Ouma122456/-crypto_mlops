@@ -6,7 +6,9 @@ pipeline {
         stage('Checkout') {
             steps {
                 deleteDir() 
-                git branch: 'main', url: 'https://dagshub.com/Ouma122456/crypto_mlops'
+                git branch: 'main',
+                    url: 'https://dagshub.com/Ouma122456/crypto_mlops',
+                    credentialsId: 'dagshub-cred'
             }
         }
 
