@@ -1,14 +1,4 @@
 # ----------------------------
-# Namespace for monitoring
-# ----------------------------
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: monitoring
-
----
-
-# ----------------------------
 # Prometheus ConfigMap
 # ----------------------------
 apiVersion: v1
@@ -20,20 +10,20 @@ data:
   prometheus.yml: |
     global:
       scrape_interval: 15s
-    scrape_configs:
-      # Scrape the crypto API metrics
-      - job_name: 'crypto-api'
-        static_configs:
-          - targets: ['host.docker.internal:8000']
-        metrics_path: /metrics
 
-      # Scrape Kubernetes nodes metrics
-      - job_name: 'kubernetes-nodes'
-        kubernetes_sd_configs:
-          - role: node
+    scrape_configs:
+      - job_name: "crypto-api"
+        metrics_path: /metrics
+        static_configs:
+          - targets:
+              - crypto-api-service.default.svc.cluster.local:8000
+
+      - job_name: "prometheus"
+        static_configs:
+          - targets:
+              - localhost:9090
 
 ---
-
 # ----------------------------
 # Prometheus Deployment
 # ----------------------------
@@ -68,7 +58,6 @@ spec:
             name: prometheus-config
 
 ---
-
 # ----------------------------
 # Prometheus Service
 # ----------------------------
@@ -81,7 +70,7 @@ spec:
   selector:
     app: prometheus
   ports:
-    - protocol: TCP
-      port: 9090
+    - port: 9090
       targetPort: 9090
+      nodePort: 30900
   type: NodePort

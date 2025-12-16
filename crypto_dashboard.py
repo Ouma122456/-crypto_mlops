@@ -7,31 +7,39 @@ import time
 st.set_page_config(page_title="Crypto Live Dashboard", layout="wide")
 st.title("🚀 Crypto Live Prediction Dashboard")
 
-# Correct API endpoint
-API_PREDICT = "http://api:8000/predict"
+API_URL = "http://localhost:30000/predict"  # l'API locale
 
-# Sidebar settings
+# ----------------------------
+# Sidebar
+# ----------------------------
 update_interval = st.sidebar.slider("Update interval (seconds)", 1, 10, 2)
 show_graph = st.sidebar.checkbox("Show live chart", value=True)
 
+# ----------------------------
 # Placeholders
+# ----------------------------
 latest_placeholder = st.empty()
 chart_placeholder = st.empty()
 
-# Initialize session state for history
+# ----------------------------
+# Session state
+# ----------------------------
 if "history" not in st.session_state:
     st.session_state.history = []
 
+# ----------------------------
 # Main loop
+# ----------------------------
 while True:
     try:
-        resp = requests.get(API_PREDICT, timeout=5)
+        resp = requests.get(API_URL, timeout=5)
+        resp.raise_for_status()  # pour détecter les erreurs HTTP
         data = resp.json()
 
-        # Convert timestamp properly
-        timestamp = pd.to_datetime(float(data["timestamp"]), unit="ms")
+        # Convertir timestamp en datetime
+        timestamp = pd.to_datetime(data["timestamp"], unit="ms")
 
-        # Add to history
+        # Ajouter à l'historique
         st.session_state.history.append({
             "timestamp": timestamp,
             "price": data["price"],
@@ -39,7 +47,7 @@ while True:
             "probability": data["probability"]
         })
 
-        # Display latest prediction
+        # Afficher la dernière prédiction
         latest_placeholder.markdown(
             f"**Price:** {data['price']}\n\n"
             f"**Prediction:** {data['prediction_label']}\n\n"
@@ -47,7 +55,7 @@ while True:
             f"**Timestamp:** {timestamp}"
         )
 
-        # Plot history chart
+        # Tracer l'historique
         if show_graph and len(st.session_state.history) > 1:
             df = pd.DataFrame(st.session_state.history).set_index("timestamp")
             chart_placeholder.line_chart(df[["price", "probability"]])
@@ -57,3 +65,4 @@ while True:
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching prediction: {e}")
         time.sleep(update_interval)
+
