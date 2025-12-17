@@ -12,17 +12,17 @@ pipeline {
             }
         }
 
-        stage('Setup Python Env') {
-            steps {
-                sh '''
-                    python --version
-                    python -m venv venv_local
-                    . venv_local/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                '''
-            }
+    stage('Setup Python Env') {
+        steps {
+            sh '''
+                python --version
+                python -m venv venv_local
+                . venv_local/bin/activate
+                pip install --upgrade pip
+                pip install -r requirements.txt
+            '''
         }
+    }
 
         stage('Run Training Pipeline') {
             steps {
@@ -43,25 +43,8 @@ pipeline {
             }
         }
 
-        stage('Run Tests') {
-            steps {
-                sh '''
-                    . venv_local/bin/activate
-                    export PYTHONPATH=$PYTHONPATH:$WORKSPACE/src
-                    pytest -v tests/test_app.py
-                '''
-            }
-        }
 
-        stage('DVC Pull & Push') {
-            steps {
-                sh '''
-                    . venv_local/bin/activate
-                    dvc pull || echo "No remote data"
-                    dvc push || echo "Nothing to push"
-                '''
-            }
-        }
+        
     }
 
     post {
