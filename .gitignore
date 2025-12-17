@@ -1,7 +1,42 @@
-"# Ignore DVC cache" 
-".dvc/cache/" 
-"__pycache__/" 
-"*.pyc" 
-".env" 
-/mlruns
-/models
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+venv_local/
+
+# -------------------------
+# DVC
+# -------------------------
+.dvc/cache/
+data/
+!data/.gitkeep
+
+# -------------------------
+# ML artifacts
+# -------------------------
+mlruns/
+models/
+*.pkl
+*.joblib
+*.onnx
+
+# -------------------------
+# Jenkins (CRITICAL)
+# -------------------------
+jenkins_home/
+jenkins_home_backup/
+*.hpi
+*.jar
+
+# -------------------------
+# OS / Editor
+# -------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
