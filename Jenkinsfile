@@ -43,6 +43,15 @@ pipeline {
             }
         }
 
+        stage('Run Tests') {
+            steps {
+                sh '''
+                    . venv_local/bin/activate
+                    export PYTHONPATH=$PYTHONPATH:$WORKSPACE/src
+                    pytest -v tests/test_app.py
+                '''
+            }
+        }
 
         
     }
