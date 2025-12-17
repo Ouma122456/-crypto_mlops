@@ -13,7 +13,8 @@ venv_local/
 # DVC
 # -------------------------
 .dvc/cache/
-data/
+data/** 
+!data/**/*.dvc
 !data/.gitkeep
 
 # -------------------------
