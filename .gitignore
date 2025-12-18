@@ -41,7 +41,8 @@ models/
 mlruns/
 
 # But track DVC metafiles
+/data/raw/*
+/data/processed/*
+
 !data/raw/*.dvc
 !data/processed/*.dvc
-!models.dvc
-!mlruns.dvc
