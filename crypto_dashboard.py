@@ -7,7 +7,7 @@ import time
 st.set_page_config(page_title="Crypto Live Dashboard", layout="wide")
 st.title("🚀 Crypto Live Prediction Dashboard")
 
-API_URL = "http://localhost:30000/predict"  # l'API locale
+API_URL = "http://192.168.65.3:30000/predict"  # l'API locale
 
 # ----------------------------
 # Sidebar
