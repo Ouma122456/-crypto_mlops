@@ -34,8 +34,6 @@ jenkins_home_backup/
 Thumbs.db
 .vscode/
 .idea/
-/models
-/mlruns
 # Ignore raw/processed data, models, MLflow artifacts
 data/raw/*
 data/processed/*
