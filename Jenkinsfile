@@ -12,17 +12,27 @@ pipeline {
             }
         }
 
-    stage('Setup Python Env') {
-        steps {
-            sh '''
-                python --version
-                python -m venv venv_local
-                . venv_local/bin/activate
-                pip install --upgrade pip
-                pip install -r requirements.txt
-            '''
+        stage('Setup Python Env') {
+            steps {
+                sh '''
+                    python --version
+                    python -m venv venv_local
+                    . venv_local/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                    pip install "dvc[https]"  # ensure DVC is installed
+                '''
+            }
         }
-    }
+
+        stage('Fetch DVC Data') {
+            steps {
+                sh '''
+                    . venv_local/bin/activate
+                    dvc pull
+                '''
+            }
+        }
 
         stage('Run Training Pipeline') {
             steps {
@@ -52,7 +62,6 @@ pipeline {
                 '''
             }
         }
-
         
     }
 
