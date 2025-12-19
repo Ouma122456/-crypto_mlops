@@ -1,5 +1,5 @@
 # =====================================
-# kafka_consumer_stream.py (FINAL FIXED)
+# kafka_consumer_stream.py (FINAL FIXED + SAFE HEARTBEAT)
 # =====================================
 
 import os
@@ -12,6 +12,7 @@ import joblib
 from sklearn.metrics import precision_score
 import mlflow
 from dotenv import load_dotenv
+from datetime import datetime   # ✅ SAFE ADDITION
 
 # --------------------------
 # Config
@@ -25,6 +26,9 @@ os.makedirs("data/processed", exist_ok=True)
 
 MIN_ROWS_FOR_PREDICTION = 20
 LOG_BATCH_SIZE = 10
+
+# ✅ SAFE ADDITION (heartbeat file)
+STREAM_HEARTBEAT_FILE = "data/stream_heartbeat.txt"
 
 # --------------------------
 # Load historical data
@@ -106,12 +110,10 @@ def log_streaming_metrics(y_true, y_pred, df_returns, model_name):
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
 
-    # Metrics
     DA = np.mean(y_true == y_pred)
     precision_up = precision_score(y_true, y_pred, pos_label=1, zero_division=0)
     precision_down = precision_score(y_true, y_pred, pos_label=0, zero_division=0)
 
-    # PnL: trading on next candle
     pnl = np.sum(df_returns.shift(-1).fillna(0) * (2*y_pred - 1))
 
     mlflow.log_metrics({
@@ -141,6 +143,10 @@ with mlflow.start_run(run_name="streaming_session"):
         # Process only final ticks
         if not record.get("is_final", False):
             continue
+
+        # ✅ SAFE HEARTBEAT (proves streaming, no logic impact)
+        with open(STREAM_HEARTBEAT_FILE, "w") as f:
+            f.write(f"Last streamed event at: {datetime.utcnow().isoformat()}\n")
 
         # Convert to DF
         new_df = pd.DataFrame([record])
@@ -178,7 +184,6 @@ with mlflow.start_run(run_name="streaming_session"):
 
         y_pred = model.predict(X_live)
 
-        # If regressor → convert to 0/1
         if not np.array_equal(np.unique(y_pred), [0, 1]):
             y_pred = (y_pred > 0.5).astype(int)
 

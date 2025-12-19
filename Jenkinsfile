@@ -25,15 +25,7 @@ pipeline {
             }
         }
 
-        stage('Fetch DVC Data') {
-            steps {
-                sh '''
-                    . venv_local/bin/activate
-                    dvc pull
-                '''
-            }
-        }
-
+      
         stage('Run Training Pipeline') {
             steps {
                 sh '''
