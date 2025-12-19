@@ -25,7 +25,12 @@ pipeline {
             }
         }
 
-      
+        stage('Pull Data') {
+            steps {
+                sh 'dvc pull'
+            }
+        }
+
         stage('Run Training Pipeline') {
             steps {
                 sh '''
