@@ -1,0 +1,5 @@
+outs:
+- md5: 27f58ee779373d0cdbee7f92e58dc76c
+  size: 24750
+  hash: md5
+  path: BTCUSDT_live.parquet
