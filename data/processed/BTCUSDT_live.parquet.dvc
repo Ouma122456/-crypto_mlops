@@ -1,6 +1,6 @@
 outs:
-- md5: fe99da002cf637416cb082f4140b7262
-  size: 33614
+- md5: 33f9bf7bf854ff53132e8238fb1a8622
+  size: 49428
   hash: md5
-  path: BTCUSDT_live.parquet
+  path: data/processed/BTCUSDT_live.parquet
 
