@@ -23,7 +23,7 @@ DAGSHUB_REPO = os.getenv("DAGSHUB_REPO_NAME")
 DAGSHUB_TOKEN = os.getenv("DAGSHUB_TOKEN")
 EXPERIMENT_NAME = "crypto_candle_prediction"
 
-DATA_FILE = "data/processed/BTCUSDT_live.csv"
+DATA_FILE = "data/processed/BTCUSDT_live.parquet"
 MODELS_DIR = "models"
 os.makedirs(MODELS_DIR, exist_ok=True)
 
@@ -52,7 +52,7 @@ def setup_mlflow():
 setup_mlflow()
 
 # -------------------------- Load & preprocess --------------------------
-df = pd.read_csv(DATA_FILE)
+df = pd.read_parquet(DATA_FILE) 
 df = add_features(df)
 df["target"] = np.where(df["close"].shift(-1) > df["close"], 1, 0)
 

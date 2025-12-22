@@ -1,11 +1,16 @@
 pipeline {
     agent any
 
+    environment {
+        AWS_ACCESS_KEY_ID     = credentials('dagshub-access-key')
+        AWS_SECRET_ACCESS_KEY = credentials('dagshub-secret-key')
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
-                deleteDir() 
+                deleteDir()
                 git branch: 'main',
                     url: 'https://dagshub.com/Ouma122456/crypto_mlops',
                     credentialsId: 'dagshub-cred'
@@ -20,7 +25,17 @@ pipeline {
                     . venv_local/bin/activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
-                    pip install "dvc[https]"  # ensure DVC is installed
+                    dvc version
+                '''
+            }
+        }
+
+        stage('Pull Data with DVC') {
+            steps {
+                sh '''
+                    . venv_local/bin/activate
+                    dvc pull
+                    ls -lh data || true
                 '''
             }
         }
@@ -53,11 +68,10 @@ pipeline {
                 '''
             }
         }
-        
     }
 
     post {
-        always { echo "Pipeline finished" }
+        always  { echo "Pipeline finished" }
         success { echo "Pipeline succeeded" }
         failure { echo "Pipeline failed" }
     }
