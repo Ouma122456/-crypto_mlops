@@ -1,4 +1,0 @@
-[core]
-    remote = dagshub_dvc
-['remote "dagshub_dvc"']
-    url = https://dagshub.com/Ouma122456/crypto_mlops.dvc
