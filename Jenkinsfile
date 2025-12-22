@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        AWS_ACCESS_KEY_ID     = credentials('dagshub-access-key')
-        AWS_SECRET_ACCESS_KEY = credentials('dagshub-secret-key')
-    }
-
     stages {
 
         stage('Checkout') {
@@ -30,12 +25,10 @@ pipeline {
             }
         }
 
-        stage('Pull Data with DVC') {
+        stage('List Data') {
             steps {
                 sh '''
-                    . venv_local/bin/activate
-                    dvc pull
-                    ls -lh data || true
+                    ls -lh data/processed || true
                 '''
             }
         }
