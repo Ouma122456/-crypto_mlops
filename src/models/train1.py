@@ -52,9 +52,18 @@ def setup_mlflow():
 setup_mlflow()
 
 # -------------------------- Load & preprocess --------------------------
-df = pd.read_parquet(DATA_FILE) 
+df = pd.read_parquet(DATA_FILE)
+
+# ensure time order (only if column exists)
+if "start_time" in df.columns:
+    df = df.sort_values("start_time")
+
+# create target FIRST
+df["target"] = (df["close"].shift(-1) > df["close"]).astype(int)
+
+# then create features
 df = add_features(df)
-df["target"] = np.where(df["close"].shift(-1) > df["close"], 1, 0)
+
 
 features = [
     "HL_range","OC_change","OC_pct_change","candle_body","candle_direction",
@@ -71,7 +80,8 @@ X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
 y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
 returns_test = returns.iloc[split_idx:]
 
-print(f"Data split: {len(X_train)} train / {len(X_test)} test")
+
+
 
 # -------------------------- Helper functions --------------------------
 def calculate_metrics(y_true, y_pred, df_returns):
