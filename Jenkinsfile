@@ -47,10 +47,11 @@ pipeline {
             steps {
                 sh '''
                     . venv_local/bin/activate
-                    python evaluate.py || echo "No evaluation script found"
+                    python evaluate.py
                 '''
             }
         }
+
 
         stage('Run Tests') {
             steps {
